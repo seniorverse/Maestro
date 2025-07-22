@@ -3805,6 +3805,8 @@ class IntegrationTest {
 
                                 if (commandName == "InputTextCommand" && !cancellationSignal.isCompleted) {
                                     cancellationSignal.complete(Unit)
+                                    // Add immediate cancellation to prevent race condition
+                                    coroutineContext[Job]?.cancel()
                                 }
                             }
                         )
