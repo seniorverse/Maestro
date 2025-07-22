@@ -3826,6 +3826,9 @@ class IntegrationTest {
                 cancellationSignal.await()
                 activeFlows[flowId]?.cancel()
 
+                // Add small delay to ensure cancellation propagates before race condition occurs
+                delay(100)
+
                 try {
                     flowJob.join()
                 } catch (e: CancellationException) {
