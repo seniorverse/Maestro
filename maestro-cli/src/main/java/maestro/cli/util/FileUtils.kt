@@ -55,9 +55,9 @@ object FileUtils {
 
         try {
             // Evaluate environment variables in the appId
-            val env = emptyMap<String, String>()
-                .withInjectedShellEnvVars()
-                .withDefaultEnvVars(this)
+            // Use ALL system env vars (not just MAESTRO_*) to support ${DOMAIN} etc.
+            val env = System.getenv().toMutableMap()
+            env.putAll(emptyMap<String, String>().withDefaultEnvVars(this))
             env.forEach { (key, value) ->
                 jsEngine.putEnv(key, value)
             }
