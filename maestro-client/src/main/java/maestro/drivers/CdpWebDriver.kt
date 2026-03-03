@@ -29,13 +29,14 @@ import org.openqa.selenium.chrome.ChromeDriverService
 import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.chromium.ChromiumDriverLogLevel
 import org.openqa.selenium.devtools.HasDevTools
-import org.openqa.selenium.devtools.v141.emulation.Emulation
+import org.openqa.selenium.devtools.v144.emulation.Emulation
 import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.interactions.PointerInput
 import org.openqa.selenium.interactions.Sequence
 import org.openqa.selenium.remote.RemoteWebDriver
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.net.URI
 import java.time.Duration
 import java.util.*
 import java.util.logging.Level
@@ -46,7 +47,8 @@ private const val SYNTHETIC_COORDINATE_SPACE_OFFSET = 100000
 
 class CdpWebDriver(
     val isStudio: Boolean,
-    private val isHeadless: Boolean = false
+    private val isHeadless: Boolean = false,
+    private val screenSize: String?
 ) : Driver {
 
     private lateinit var cdpClient: CdpClient
@@ -105,9 +107,24 @@ class CdpWebDriver(
                 addArguments("--remote-allow-origins=*")
                 addArguments("--disable-search-engine-choice-screen")
                 addArguments("--lang=en")
+
+                // Disable password management
+                addArguments("--password-store=basic")
+                val chromePrefs = hashMapOf<String, Any>(
+                    "credentials_enable_service" to false,
+                    "profile.password_manager_enabled" to false,
+                    "profile.password_manager_leak_detection" to false   // important one
+                )
+                setExperimentalOption("prefs", chromePrefs)
+
                 if (isHeadless) {
                     addArguments("--headless=new")
-                    addArguments("--window-size=1024,768")
+                    if(screenSize != null){
+                        addArguments("--window-size=" + screenSize.replace('x',','))
+                    }
+                    else{
+                        addArguments("--window-size=1024,768")
+                    }
                     setExperimentalOption("detach", true)
                 }
             }
@@ -304,7 +321,34 @@ class CdpWebDriver(
     }
 
     override fun clearAppState(appId: String) {
-        // Do nothing
+        ensureOpen()
+
+        val origin = try {
+            val uri = URI(appId)
+            if (uri.scheme.isNullOrBlank() || uri.host.isNullOrBlank()) {
+                null
+            } else if (uri.port == -1) {
+                "${uri.scheme}://${uri.host}"
+            } else {
+                "${uri.scheme}://${uri.host}:${uri.port}"
+            }
+        } catch (e: Exception) {
+            LOGGER.warn("Failed to parse origin from $appId", e)
+            null
+        }
+
+        if (origin == null) {
+            return
+        }
+
+        try {
+            runBlocking {
+                val target = cdpClient.listTargets().first()
+                cdpClient.clearDataForOrigin(origin, "all", target)
+            }
+        } catch (e: Exception) {
+            LOGGER.warn("Failed to clear browser data for $origin", e)
+        }
     }
 
     override fun clearKeychain() {
@@ -383,7 +427,16 @@ class CdpWebDriver(
     }
 
     override fun scrollVertical() {
-        scroll("window.scrollY + Math.round(window.innerHeight / 2)", "window.scrollX")
+        // Check if this is a Flutter web app
+        val isFlutter = executeJS("window.maestro.isFlutterApp()") as? Boolean ?: false
+        
+        if (isFlutter) {
+            // Use Flutter-specific smooth animated scrolling
+            executeJS("window.maestro.smoothScrollFlutter('UP', 500)")
+        } else {
+            // Use standard scroll for regular web pages
+            scroll("window.scrollY + Math.round(window.innerHeight / 2)", "window.scrollX")
+        }
     }
 
     override fun isKeyboardVisible(): Boolean {
@@ -417,11 +470,19 @@ class CdpWebDriver(
     }
 
     override fun swipe(swipeDirection: SwipeDirection, durationMs: Long) {
-        when (swipeDirection) {
-            SwipeDirection.UP -> scroll("window.scrollY + Math.round(window.innerHeight / 2)", "window.scrollX")
-            SwipeDirection.DOWN -> scroll("window.scrollY - Math.round(window.innerHeight / 2)", "window.scrollX")
-            SwipeDirection.LEFT -> scroll("window.scrollY", "window.scrollX + Math.round(window.innerWidth / 2)")
-            SwipeDirection.RIGHT -> scroll("window.scrollY", "window.scrollX - Math.round(window.innerWidth / 2)")
+        val isFlutter = executeJS("window.maestro.isFlutterApp()") as? Boolean ?: false
+        
+        if (isFlutter) {
+            // Flutter web: Use smooth animated scrolling with easing
+            executeJS("window.maestro.smoothScrollFlutter('${swipeDirection.name}', $durationMs)")
+        } else {
+            // HTML web: Use standard window scrolling
+            when (swipeDirection) {
+                SwipeDirection.UP -> scroll("window.scrollY + Math.round(window.innerHeight / 2)", "window.scrollX")
+                SwipeDirection.DOWN -> scroll("window.scrollY - Math.round(window.innerHeight / 2)", "window.scrollX")
+                SwipeDirection.LEFT -> scroll("window.scrollY", "window.scrollX + Math.round(window.innerWidth / 2)")
+                SwipeDirection.RIGHT -> scroll("window.scrollY", "window.scrollX - Math.round(window.innerWidth / 2)")
+            }
         }
     }
 
@@ -598,7 +659,7 @@ class CdpWebDriver(
 }
 
 fun main() {
-    val driver = CdpWebDriver(isStudio = false)
+    val driver = CdpWebDriver(isStudio = false, isHeadless = false, screenSize = null)
     driver.open()
 
     try {

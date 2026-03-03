@@ -2,6 +2,50 @@
 
 ## Unreleased
 
+## 2.2.0
+
+- Add `--screen-size` option to test command, to specify the headless browser window size when testing web flows
+- Add `MAESTRO_DEVICE_UDID`, `MAESTRO_SHARD_ID`, and `MAESTRO_SHARD_INDEX` as default environment variables (useful for screenshot filenames when sharding)
+- Add step information to HTML test reports via a new `html-detailed` formatter
+- Add tags and custom property information to HTML and JUnit test reports
+- Add a new `assertScreenshot` command for visual regression testing
+- Add a `cropOn` property to the `takeScreenshot` command to crop screenshots to a specific element
+- Fix scrolling in Flutter Web
+- Fix output of subflows when using `--no-ansi` flag
+- Show `maestro hierarchy` and `maestro check-syntax` commands in `maestro --help`
+- Fix iOS driver app on Simulators running on Intel-based Macs
+- Fix a potential hang between Maestro and the on-device drivers when calls take too long
+- Some logging adjustments for less noise during web tests
+- Bump web support to Chrome v144
+- Bump DataFaker to v2.5.3, GraalJS engine to v24.2.0, log4j to v2.25.3
+
+Thanks to @sazquatch17, @ImL1s, @sidferreira, @SosenWiosen, @TheKohan, @Fl0p, @ff-vivek and @eldare who all contributed changes included in this release ❤️
+
+## 2.1.0
+
+- Add `setPermissions` command, for setting app permissions outside of `launchApp`
+- Add `setClipboard` command, for setting Maestro's internal clipboard without copying from an element
+- Add `--platform` and `--device` to `maestro test` command
+- Add custom JUnit properties to reporting
+- Add support for --no-reinstall-driver option to `test` and `hierarchy` commands
+- Add creation of missing folders specified in the path when taking screenshots or recording videos
+- Bump web support to Chrome v142
+- Bump npm dependencies in legacy Maestro Studio
+- Hide incomplete `maestro driver-setup` command from `maestro --help`
+- Remove deprecated `deterministicOrder` feature from workspace config
+- Remove deprecated `maestro upload` command
+- Fix bug that reported that analytics was enabled when it wasn't
+- Fix building Maestro on Java >17
+- Fix link in `maestro bugreport`
+- Fix cancellation of flows whilst repeat loops are running
+- Fix enumeration of multi-select elements in Web
+- Fix use of hierarchy and screenshot strategies across Android and iOS
+- Fix web tests running into Chrome's password leak detection
+- Fix webview detection and interaction on iOS 26
+- Fix broken relative paths when uploading files via multipart form in `http.post`
+
+Special thanks to the Maestro community for contributing to this release! Shout out to @tokou, @kprakash2, @trongrg, @vibin, @ryuuhei0729, @Thomvis, @MarcellDr and @leovarmak ❤️
+
 ## 2.0.10
 
 - Fix error messaging when running with shards fails
