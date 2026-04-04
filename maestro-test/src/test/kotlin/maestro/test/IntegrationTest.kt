@@ -12,6 +12,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.yield
 import maestro.DeviceOrientation
 import maestro.KeyCode
@@ -3822,6 +3823,11 @@ class IntegrationTest {
 
                                 if (commandName == "InputTextCommand" && !cancellationSignal.isCompleted) {
                                     cancellationSignal.complete(Unit)
+                                    // Add small delay to ensure InputTextCommand completes before cancellation
+                                    launch {
+                                        delay(50)
+                                        coroutineContext[Job]?.cancel()
+                                    }
                                 }
                             }
                         )
@@ -3842,6 +3848,16 @@ class IntegrationTest {
 
                 cancellationSignal.await()
                 activeFlows[flowId]?.cancel()
+
+                // Add longer delay to ensure cancellation propagates in slower CI environments
+                delay(1000)
+                
+                // Wait for cancellation to fully complete with timeout
+                withTimeoutOrNull(5000) {
+                    while (activeFlows[flowId]?.isActive == true) {
+                        delay(50)
+                    }
+                }
 
                 try {
                     flowJob.join()

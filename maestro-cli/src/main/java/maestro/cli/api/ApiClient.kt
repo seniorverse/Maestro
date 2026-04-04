@@ -897,7 +897,9 @@ data class CliVersion(
         private val COMPARATOR = compareBy<CliVersion>({ it.major }, { it.minor }, { it.patch })
 
         fun parse(versionString: String): CliVersion? {
-            val parts = versionString.split('.')
+            // Strip any suffix like "-custom", "-beta", etc.
+            val cleanVersion = versionString.split('-').first()
+            val parts = cleanVersion.split('.')
             if (parts.size != 3) return null
             val major = parts[0].toIntOrNull() ?: return null
             val minor = parts[1].toIntOrNull() ?: return null
